@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Horario Profesional</title>
+
+<style>
+body{
+  font-family: Arial, sans-serif;
+  margin:0;
+  padding:15px;
+  background:#f4f6f9;
+}
+
+h1{
+  text-align:center;
+  cursor:text;
+  margin:5px 0 10px 0;
+  font-size:28px;
+}
+
+.controls{
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  margin-bottom:15px;
+  justify-content:center;
+}
+
+.controls input,
+.controls select,
+.controls button{
+  padding:5px;
+  font-size:14px;
+}
+
+/* PANEL DISEÑO */
+
+#designPanel{
+  border:2px solid #333;
+  padding:12px;
+  margin-bottom:15px;
+  background:#ffffff;
+  display:none;
+}
+
+#designPanel h3{
+  margin-top:0;
+}
+
+#deleteBtn{
+  margin-top:15px;
+  padding:8px 12px;
+  background:#e53935;
+  color:white;
+  border:none;
+  cursor:pointer;
+  border-radius:5px;
+  font-size:14px;
+}
+
+#deleteBtn:hover{
+  background:#c62828;
+}
+
+/* HORARIO */
+
+#scheduleWrapper{
+  display:flex;
+  flex-direction:column;
+  border:1px solid #ccc;
+  background:white;
+}
+
+#daysHeader{
+  display:grid;
+  grid-template-columns:60px repeat(7,1fr);
+  border-bottom:1px solid #ccc;
+}
+
+.day-header{
+  padding:8px;
+  text-align:center;
+  font-weight:bold;
+  color:white;
+}
+
+.day-0{background:#ef5350;}
+.day-1{background:#42a5f5;}
+.day-2{background:#66bb6a;}
+.day-3{background:#ab47bc;}
+.day-4{background:#ffa726;}
+.day-5{background:#26c6da;}
+.day-6{background:#8d6e63;}
+
+#scheduleContainer{
+  display:flex;
+  position:relative;
+}
+
+#timeMarkers{
+  width:60px;
+  position:relative;
+  border-right:1px solid #ccc;
+}
+
+.time-marker{
+  position:absolute;
+  right:5px;
+  transform:translateY(-50%);
+  font-size:12px;
+}
+
+#schedule{
+  flex:1;
+  display:grid;
+  grid-template-columns:repeat(7,1fr);
+  position:relative;
+}
+
+.day-column{
+  border-left:1px solid #ddd;
+  position:relative;
+}
+
+.hour-line{
+  position:absolute;
+  left:0;
+  right:0;
+  height:1px;
+  background:#e0e0e0;
+}
+
+.event{
+  position:absolute;
+  left:5px;
+  right:5px;
+  border-radius:8px;
+  padding:5px;
+  box-sizing:border-box;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+  text-align:center;
+  cursor:pointer;
+}
+
+.event-title{
+  font-weight:bold;
+}
+
+.event-time{
+  font-size:12px;
+}
+
+/* IMPRESIÓN */
+
+@media print{
+  body{
+    margin:0;
+    padding:5px;
+  }
+
+  h1{
+    margin:0 0 5px 0;
+    font-size:22px;
+  }
+
+  .controls,
+  #designPanel{
+    display:none;
+  }
+
+  @page{
+    size:landscape;
+    margin:5mm;
+  }
+}
+
+</style>
+</head>
+<body>
+
+<h1 contenteditable="true">HORARIO</h1>
+
+<div class="controls">
+<select id="day">
+  <option value="0">Domingo</option>
+  <option value="1">Lunes</option>
+  <option value="2">Martes</option>
+  <option value="3">Miércoles</option>
+  <option value="4">Jueves</option>
+  <option value="5">Viernes</option>
+  <option value="6">Sábado</option>
+</select>
+
+<input type="text" id="title" placeholder="Curso / Actividad">
+<input type="time" id="start">
+<input type="time" id="end">
+
+<button onclick="addEvent()">Agregar</button>
+<button onclick="window.print()">Imprimir</button>
+</div>
+
+<!-- PANEL DISEÑO -->
+<div id="designPanel">
+<h3>Panel de Diseño</h3>
+
+<label>
+<input type="checkbox" id="defaultBorder" checked>
+ Borde activo por defecto
+</label>
+
+<br><br>
+
+<label>Fuente
+<select id="editFont">
+  <option>Arial</option>
+  <option>Verdana</option>
+  <option>Tahoma</option>
+  <option>Times New Roman</option>
+  <option>Courier New</option>
+</select>
+</label>
+
+<label>Tamaño
+<input type="number" id="editSize" value="14">
+</label>
+
+<label>Negrita
+<input type="checkbox" id="editBold">
+</label>
+
+<br><br>
+
+<label>Interlineado
+<input type="number" id="editSpacing" value="4" min="0">
+</label>
+
+<br><br>
+
+<label>Color fondo
+<input type="color" id="editBgColor" value="#4caf50">
+</label>
+
+<label>Color borde
+<input type="color" id="editBorderColor" value="#4caf50">
+</label>
+
+<br><br>
+
+<label>Hora inicio
+<input type="time" id="editStart">
+</label>
+
+<label>Hora fin
+<input type="time" id="editEnd">
+</label>
+
+<br>
+
+<button id="deleteBtn">🗑 Eliminar actividad</button>
+
+</div>
+
+<div id="scheduleWrapper">
+<div id="daysHeader">
+  <div></div>
+  <div class="day-header day-0">Domingo</div>
+  <div class="day-header day-1">Lunes</div>
+  <div class="day-header day-2">Martes</div>
+  <div class="day-header day-3">Miércoles</div>
+  <div class="day-header day-4">Jueves</div>
+  <div class="day-header day-5">Viernes</div>
+  <div class="day-header day-6">Sábado</div>
+</div>
+
+<div id="scheduleContainer">
+  <div id="timeMarkers"></div>
+  <div id="schedule"></div>
+</div>
+</div>
+
+<script>
+const START_HOUR=6;
+const END_HOUR=22;
+const GRID_HEIGHT=960;
+
+const schedule=document.getElementById("schedule");
+const timeMarkers=document.getElementById("timeMarkers");
+const designPanel=document.getElementById("designPanel");
+const deleteBtn=document.getElementById("deleteBtn");
+
+let selectedEvent=null;
+
+schedule.style.height=GRID_HEIGHT+"px";
+timeMarkers.style.height=GRID_HEIGHT+"px";
+
+function formatHour(h){
+  return (h<10?"0":"")+h+":00";
+}
+
+function drawGrid(){
+  const totalHours=END_HOUR-START_HOUR;
+  const hourHeight=GRID_HEIGHT/totalHours;
+
+  for(let d=0;d<7;d++){
+    const col=document.createElement("div");
+    col.className="day-column";
+    col.dataset.day=d;
+
+    for(let h=0;h<=totalHours;h++){
+      const line=document.createElement("div");
+      line.className="hour-line";
+      line.style.top=(h*hourHeight)+"px";
+      col.appendChild(line);
+    }
+
+    schedule.appendChild(col);
+  }
+}
+
+function drawTimeMarkers(){
+  const totalHours=END_HOUR-START_HOUR;
+  const hourHeight=GRID_HEIGHT/totalHours;
+
+  for(let h=START_HOUR;h<=END_HOUR;h++){
+    const marker=document.createElement("div");
+    marker.className="time-marker";
+    marker.style.top=((h-START_HOUR)*hourHeight)+"px";
+    marker.textContent=formatHour(h);
+    timeMarkers.appendChild(marker);
+  }
+}
+
+function timeToMinutes(t){
+  const [h,m]=t.split(":").map(Number);
+  return h*60+m;
+}
+
+function updateCoordinates(eventDiv,start,end){
+  const totalMinutes=(END_HOUR-START_HOUR)*60;
+  const minuteHeight=GRID_HEIGHT/totalMinutes;
+
+  const startMin=timeToMinutes(start)-(START_HOUR*60);
+  const endMin=timeToMinutes(end)-(START_HOUR*60);
+
+  eventDiv.style.top=(startMin*minuteHeight)+"px";
+  eventDiv.style.height=((endMin-startMin)*minuteHeight)+"px";
+
+  eventDiv.querySelector(".event-time").innerText=start+" - "+end;
+}
+
+function addEvent(){
+  const day=document.getElementById("day").value;
+  const title=document.getElementById("title").value;
+  const start=document.getElementById("start").value;
+  const end=document.getElementById("end").value;
+
+  if(!title||!start||!end)return alert("Completa campos");
+
+  const event=document.createElement("div");
+  event.className="event";
+  event.style.background=editBgColor.value;
+
+  if(defaultBorder.checked){
+    event.style.border="2px solid "+editBorderColor.value;
+  }else{
+    event.style.border="none";
+  }
+
+  event.innerHTML=`
+    <div class="event-title">${title}</div>
+    <div class="event-time">${start} - ${end}</div>
+  `;
+
+  updateCoordinates(event,start,end);
+
+  event.addEventListener("click",(e)=>{
+    e.stopPropagation();
+    selectedEvent=event;
+    designPanel.style.display="block";
+    editStart.value=start;
+    editEnd.value=end;
+  });
+
+  schedule.querySelector(`[data-day='${day}']`).appendChild(event);
+}
+
+/* ELIMINAR */
+
+deleteBtn.addEventListener("click",function(){
+  if(selectedEvent){
+    selectedEvent.remove();
+    selectedEvent=null;
+    designPanel.style.display="none";
+  }
+});
+
+document.addEventListener("click",function(e){
+  const clickedEvent=e.target.closest(".event");
+  const clickedPanel=e.target.closest("#designPanel");
+
+  if(!clickedEvent && !clickedPanel){
+    designPanel.style.display="none";
+    selectedEvent=null;
+  }
+});
+
+drawGrid();
+drawTimeMarkers();
+</script>
+
+</body>
+</html>
