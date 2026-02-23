@@ -15,7 +15,7 @@ body{
 h1{
   text-align:center;
   cursor:text;
-  margin:5px 0 10px 0;
+  margin:0px 0 0px 0;
   font-size:28px;
 }
 
@@ -34,7 +34,7 @@ h1{
   font-size:14px;
 }
 
-/* PANEL DISEÑO */
+/* PANEL */
 
 #designPanel{
   border:2px solid #333;
@@ -44,23 +44,14 @@ h1{
   display:none;
 }
 
-#designPanel h3{
-  margin-top:0;
-}
-
 #deleteBtn{
-  margin-top:15px;
+  margin-top:10px;
   padding:8px 12px;
   background:#e53935;
   color:white;
   border:none;
   cursor:pointer;
   border-radius:5px;
-  font-size:14px;
-}
-
-#deleteBtn:hover{
-  background:#c62828;
 }
 
 /* HORARIO */
@@ -136,7 +127,7 @@ h1{
   left:5px;
   right:5px;
   border-radius:8px;
-  padding:5px;
+  padding:6px;
   box-sizing:border-box;
   display:flex;
   flex-direction:column;
@@ -150,37 +141,60 @@ h1{
   font-weight:bold;
 }
 
+.event-title,
 .event-time{
-  font-size:12px;
+  outline:none;
 }
 
-/* IMPRESIÓN */
-
-@media print{
-  body{
-    margin:0;
-    padding:5px;
-  }
-
-  h1{
-    margin:0 0 5px 0;
-    font-size:22px;
-  }
-
-  .controls,
-  #designPanel{
-    display:none;
-  }
-
-  @page{
-    size:landscape;
-    margin:5mm;
-  }
+/* SOLO OCULTAR CONTROLES AL IMPRIMIR */
+@media print {
+  .controls { display: none; }
 }
-
 </style>
 </head>
 <body>
+
+<!-- MODAL INICIAL -->
+<div id="startupModal" style="
+position:fixed;
+inset:0;
+background:rgba(0,0,0,0.5);
+display:flex;
+justify-content:center;
+align-items:center;
+z-index:9999;
+">
+
+  <div style="
+  background:white;
+  padding:30px;
+  border-radius:12px;
+  text-align:center;
+  width:300px;
+  box-shadow:0 10px 30px rgba(0,0,0,0.2);
+  ">
+
+    <h2>Configurar Horario</h2>
+
+    <label>Hora inicio</label><br>
+    <input type="time" id="modalStart" value="06:00"><br><br>
+
+    <label>Hora fin</label><br>
+    <input type="time" id="modalEnd" value="22:00"><br><br>
+
+    <button onclick="startSchedule()" style="
+      padding:8px 15px;
+      border:none;
+      background:#1976d2;
+      color:white;
+      border-radius:6px;
+      cursor:pointer;
+    ">
+      Continuar
+    </button>
+
+  </div>
+</div>
 
 <h1 contenteditable="true">HORARIO</h1>
 
@@ -201,26 +215,19 @@ h1{
 
 <button onclick="addEvent()">Agregar</button>
 <button onclick="window.print()">Imprimir</button>
+<button onclick="savePDF()">Guardar en PDF</button>
 </div>
 
-<!-- PANEL DISEÑO -->
 <div id="designPanel">
 <h3>Panel de Diseño</h3>
 
-<label>
-<input type="checkbox" id="defaultBorder" checked>
- Borde activo por defecto
-</label>
-
-<br><br>
-
 <label>Fuente
 <select id="editFont">
-  <option>Arial</option>
-  <option>Verdana</option>
-  <option>Tahoma</option>
-  <option>Times New Roman</option>
-  <option>Courier New</option>
+<option>Arial</option>
+<option>Verdana</option>
+<option>Tahoma</option>
+<option>Times New Roman</option>
+<option>Courier New</option>
 </select>
 </label>
 
@@ -231,8 +238,6 @@ h1{
 <label>Negrita
 <input type="checkbox" id="editBold">
 </label>
-
-<br><br>
 
 <label>Interlineado
 <input type="number" id="editSpacing" value="4" min="0">
@@ -261,7 +266,6 @@ h1{
 <br>
 
 <button id="deleteBtn">🗑 Eliminar actividad</button>
-
 </div>
 
 <div id="scheduleWrapper">
@@ -281,26 +285,44 @@ h1{
   <div id="schedule"></div>
 </div>
 </div>
-
 <script>
-const START_HOUR=6;
-const END_HOUR=22;
-const GRID_HEIGHT=960;
+let START_HOUR=6;
+let END_HOUR=22;
+const GRID_HEIGHT=900;
 
 const schedule=document.getElementById("schedule");
 const timeMarkers=document.getElementById("timeMarkers");
 const designPanel=document.getElementById("designPanel");
-const deleteBtn=document.getElementById("deleteBtn");
 
 let selectedEvent=null;
 
 schedule.style.height=GRID_HEIGHT+"px";
 timeMarkers.style.height=GRID_HEIGHT+"px";
 
-function formatHour(h){
-  return (h<10?"0":"")+h+":00";
+/* MODAL */
+function startSchedule(){
+  const start=document.getElementById("modalStart").value;
+  const end=document.getElementById("modalEnd").value;
+
+  if(!start || !end) return alert("Completa las horas");
+
+  START_HOUR=parseInt(start.split(":")[0]);
+  END_HOUR=parseInt(end.split(":")[0]);
+
+  schedule.innerHTML="";
+  timeMarkers.innerHTML="";
+
+  drawGrid();
+  drawTimeMarkers();
+
+  document.getElementById("startupModal").style.display="none";
 }
 
+function savePDF(){
+  window.print();
+}
+
+/* GRID */
 function drawGrid(){
   const totalHours=END_HOUR-START_HOUR;
   const hourHeight=GRID_HEIGHT/totalHours;
@@ -329,11 +351,12 @@ function drawTimeMarkers(){
     const marker=document.createElement("div");
     marker.className="time-marker";
     marker.style.top=((h-START_HOUR)*hourHeight)+"px";
-    marker.textContent=formatHour(h);
+    marker.textContent=(h<10?"0":"")+h+":00";
     timeMarkers.appendChild(marker);
   }
 }
 
+/* TIEMPO */
 function timeToMinutes(t){
   const [h,m]=t.split(":").map(Number);
   return h*60+m;
@@ -348,10 +371,9 @@ function updateCoordinates(eventDiv,start,end){
 
   eventDiv.style.top=(startMin*minuteHeight)+"px";
   eventDiv.style.height=((endMin-startMin)*minuteHeight)+"px";
-
-  eventDiv.querySelector(".event-time").innerText=start+" - "+end;
 }
 
+/* AGREGAR EVENTO */
 function addEvent(){
   const day=document.getElementById("day").value;
   const title=document.getElementById("title").value;
@@ -362,54 +384,70 @@ function addEvent(){
 
   const event=document.createElement("div");
   event.className="event";
-  event.style.background=editBgColor.value;
-
-  if(defaultBorder.checked){
-    event.style.border="2px solid "+editBorderColor.value;
-  }else{
-    event.style.border="none";
-  }
+  event.style.background="#4caf50";
+  event.style.border="2px solid #4caf50";
 
   event.innerHTML=`
-    <div class="event-title">${title}</div>
-    <div class="event-time">${start} - ${end}</div>
+    <div class="event-title" contenteditable="true">${title}</div>
+    <div class="event-time" contenteditable="true">${start} - ${end}</div>
   `;
 
   updateCoordinates(event,start,end);
+
+  const timeDiv=event.querySelector(".event-time");
+
+  timeDiv.addEventListener("input",function(){
+    const regex=/^([0-2]?\d:[0-5]\d)\s*-\s*([0-2]?\d:[0-5]\d)$/;
+    const match=this.innerText.trim().match(regex);
+    if(match){
+      updateCoordinates(event,match[1],match[2]);
+    }
+  });
 
   event.addEventListener("click",(e)=>{
     e.stopPropagation();
     selectedEvent=event;
     designPanel.style.display="block";
-    editStart.value=start;
-    editEnd.value=end;
+
+    const times=timeDiv.innerText.split("-");
+    editStart.value=times[0].trim();
+    editEnd.value=times[1].trim();
   });
 
   schedule.querySelector(`[data-day='${day}']`).appendChild(event);
 }
 
-/* ELIMINAR */
+/* PANEL */
+editFont.oninput=()=>{if(selectedEvent)selectedEvent.style.fontFamily=editFont.value;}
+editSize.oninput=()=>{if(selectedEvent)selectedEvent.style.fontSize=editSize.value+"px";}
+editBold.oninput=()=>{if(selectedEvent)selectedEvent.style.fontWeight=editBold.checked?"bold":"normal";}
+editSpacing.oninput=()=>{
+  if(selectedEvent){
+    selectedEvent.querySelector(".event-title").style.marginBottom=
+      editSpacing.value+"px";
+  }
+};
 
-deleteBtn.addEventListener("click",function(){
+editBgColor.oninput=()=>{if(selectedEvent)selectedEvent.style.background=editBgColor.value;}
+editBorderColor.oninput=()=>{if(selectedEvent)selectedEvent.style.border="2px solid "+editBorderColor.value;}
+
+editStart.oninput=()=>{if(selectedEvent)updateCoordinates(selectedEvent,editStart.value,editEnd.value);}
+editEnd.oninput=()=>{if(selectedEvent)updateCoordinates(selectedEvent,editStart.value,editEnd.value);}
+
+deleteBtn.onclick=()=>{
   if(selectedEvent){
     selectedEvent.remove();
     selectedEvent=null;
     designPanel.style.display="none";
   }
-});
+};
 
 document.addEventListener("click",function(e){
-  const clickedEvent=e.target.closest(".event");
-  const clickedPanel=e.target.closest("#designPanel");
-
-  if(!clickedEvent && !clickedPanel){
+  if(!e.target.closest(".event") && !e.target.closest("#designPanel")){
     designPanel.style.display="none";
     selectedEvent=null;
   }
 });
-
-drawGrid();
-drawTimeMarkers();
 </script>
 
 </body>
